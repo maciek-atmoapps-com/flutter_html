@@ -337,7 +337,7 @@ class StyledElementBuiltIn extends HtmlExtension {
         styledElement.style = Style(
           display: Display.block,
           listStyleType: ListStyleType.decimal,
-          padding: HtmlPaddings.only(inlineStart: 40),
+          padding: HtmlPaddings.only(inlineStart: styledElement.style.fontSize?.value ?? 22),
           margin: Margins(
             blockStart: Margin(1, Unit.em),
             blockEnd: Margin(1, Unit.em),
@@ -348,7 +348,7 @@ class StyledElementBuiltIn extends HtmlExtension {
         styledElement.style = Style(
           display: Display.block,
           listStyleType: ListStyleType.disc,
-          padding: HtmlPaddings.only(inlineStart: 40),
+          padding: HtmlPaddings.only(inlineStart: styledElement.style.fontSize?.value ?? 22),
           margin: Margins(
             blockStart: Margin(1, Unit.em),
             blockEnd: Margin(1, Unit.em),
