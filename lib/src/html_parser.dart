@@ -41,6 +41,7 @@ class HtmlParser extends StatefulWidget {
   final Set<String>? onlyRenderTheseTags;
   final OnTap? internalOnAnchorTap;
   final Html? root;
+  final Style defaultStyle;
 
   HtmlParser({
     required super.key,
@@ -53,6 +54,7 @@ class HtmlParser extends StatefulWidget {
     required this.extensions,
     required this.doNotRenderTheseTags,
     required this.onlyRenderTheseTags,
+    required this.defaultStyle,
     this.root,
   }) : internalOnAnchorTap = onAnchorTap ??
             (key != null ? _handleAnchorTap(key, onLinkTap) : onLinkTap);
@@ -198,8 +200,7 @@ class _HtmlParserState extends State<HtmlParser> {
       name: '[Tree Root]',
       children: [],
       node: widget.htmlData,
-      style: Style.fromTextStyle(DefaultTextStyle.of(context)
-          .style), //TODO this was Theme.of(context).textTheme.bodyText2!. Compare.
+      style: widget.defaultStyle,
     );
 
     for (var node in widget.htmlData.nodes) {

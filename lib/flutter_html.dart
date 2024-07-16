@@ -166,6 +166,7 @@ class _HtmlState extends State<Html> {
 
   @override
   Widget build(BuildContext context) {
+    final defaultStyle = Style.fromTextStyle(DefaultTextStyle.of(context).style);
     return HtmlParser(
       key: widget._anchorKey,
       htmlData: documentElement,
@@ -177,6 +178,7 @@ class _HtmlState extends State<Html> {
       extensions: widget.extensions,
       doNotRenderTheseTags: widget.doNotRenderTheseTags,
       onlyRenderTheseTags: widget.onlyRenderTheseTags,
+      defaultStyle: defaultStyle,
     );
   }
 }
