@@ -152,9 +152,9 @@ class _HtmlParserState extends State<HtmlParser> {
   late StyledElement tree;
 
   @override
-  void didChangeDependencies() {
+  void initState() {
     prepareTree();
-    super.didChangeDependencies();
+    super.initState();
   }
 
   void prepareTree() {
