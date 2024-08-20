@@ -1,11 +1,7 @@
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_html/src/anchor.dart';
-import 'package:flutter_html/src/css_box_widget.dart';
+import 'package:flutter_html/flutter_html.dart';
 import 'package:flutter_html/src/css_parser.dart';
-import 'package:flutter_html/src/extension/html_extension.dart';
-import 'package:flutter_html/src/style.dart';
-import 'package:flutter_html/src/tree/styled_element.dart';
 import 'package:html/dom.dart' as dom;
 
 class StyledElementBuiltIn extends HtmlExtension {
@@ -394,10 +390,18 @@ class StyledElementBuiltIn extends HtmlExtension {
       case "strong":
         continue bold;
       case "sub":
-        styledElement.style = Style(
-          fontSize: FontSize.smaller,
-          verticalAlign: VerticalAlign.sub,
-        );
+        if (_hasOnlyDigits(children)) {
+          // We can use FontFeature.subscripts since this just looks nice
+          styledElement.style = Style(
+            fontFeatureSettings: [const FontFeature.subscripts()],
+          );
+        } else {
+          // For the rest we should just reduce the height of the text
+          // Using WidgetSpan with translation should not be used because line breaks can occur just before subscript text
+          styledElement.style = Style(
+            fontSize: FontSize(50, Unit.percent),
+          );
+        }
         break;
       case "summary":
         styledElement.style = Style(
@@ -406,8 +410,8 @@ class StyledElementBuiltIn extends HtmlExtension {
         break;
       case "sup":
         styledElement.style = Style(
-          fontSize: FontSize.smaller,
-          verticalAlign: VerticalAlign.sup,
+          fontSize: FontSize(75, Unit.percent),
+          fontFeatureSettings: [const FontFeature.superscripts()],
         );
         break;
       case "tt":
@@ -423,6 +427,20 @@ class StyledElementBuiltIn extends HtmlExtension {
     }
 
     return styledElement;
+  }
+
+  bool _hasOnlyDigits(List<StyledElement> children) {
+    if (children.isEmpty) return true;
+    for (var child in children) {
+      if (child is TextContentElement) {
+        final text = child.text;
+        if (text == null || text.isEmpty) continue;
+        for (int codeUnit in text.codeUnits) {
+          if ((codeUnit ^ 0x30) > 9) return false;
+        }
+      }
+    }
+    return true;
   }
 
   @override
