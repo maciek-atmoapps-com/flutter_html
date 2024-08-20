@@ -24,6 +24,8 @@ class FontSize extends LengthOrPercent {
         return FontSize(child.value / 100.0 * parent.value);
       }
       return child;
+    } else if (parent != null && parent.unit == Unit.em) {
+      return FontSize(1, Unit.em);
     }
 
     return parent;
