@@ -110,7 +110,7 @@ class CssBoxWidget extends StatelessWidget {
 
     return ClickableRichText(
       text: TextSpan(
-        style: style.generateTextStyle().copyWith(background: Paint()..color = Colors.yellow),
+        style: style.generateTextStyle(),
         children: children,
       ),
       textAlign: style.textAlign ?? TextAlign.start,
@@ -134,7 +134,7 @@ class CssBoxWidget extends StatelessWidget {
                 return ClickableRichText(
                   text: TextSpan(
                     text: style.marker!.content.replacementContent!,
-                    style: style.marker!.style?.generateTextStyle().copyWith(background: Paint()..color = Colors.green),
+                    style: style.marker!.style?.generateTextStyle(),
                   ),
                 );
               }
@@ -149,7 +149,7 @@ class CssBoxWidget extends StatelessWidget {
       if (style.marker?.content.replacementContent?.isNotEmpty ?? false) {
         return TextSpan(
           text: style.marker!.content.replacementContent!,
-          style: style.marker!.style?.generateTextStyle().copyWith(background: Paint()..color = Colors.red),
+          style: style.marker!.style?.generateTextStyle(),
         );
       }
     }
