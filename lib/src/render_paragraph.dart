@@ -491,101 +491,41 @@ class ClickableRenderParagraph extends RenderBox
   @override
   @protected
   bool hitTestChildren(BoxHitTestResult result, {required Offset position}) {
-    final children = _getClickableChildren();
-    print('${this.size} => $children');
-    InlineSpan? midSpanHit = _getHitTarget(position);
-    if (midSpanHit is HitTestTarget) {
-      print('hit: $midSpanHit');
-      result.add(HitTestEntry(midSpanHit as HitTestTarget));
+    final preferredLineHeight = _textPainter.preferredLineHeight;
+    int lines = position.dy ~/ preferredLineHeight;
+    final normalizedDy = lines * preferredLineHeight + (preferredLineHeight / 2);
+    final normalizedPosition = Offset(position.dx, normalizedDy);
+    final GlyphInfo? glyph = _textPainter.getClosestGlyphForOffset(normalizedPosition);
+    // The hit-test can't fall through the horizontal gaps between visually
+    // adjacent characters on the same line, even with a large letter-spacing or
+    // text justification, as graphemeClusterLayoutBounds.width is the advance
+    // width to the next character, so there's no gap between their
+    // graphemeClusterLayoutBounds rects.
+    final InlineSpan? spanHit = glyph != null && glyph.graphemeClusterLayoutBounds.contains(normalizedPosition)
+        ? _textPainter.text!.getSpanForPosition(TextPosition(offset: glyph.graphemeClusterCodeUnitRange.start))
+        : null;
+    if (spanHit is HitTestTarget) {
+      result.add(HitTestEntry(spanHit as HitTestTarget));
+      return true;
+    }
+    bool hit = hitTestInlineChildren(result, position);
+    if (hit && wasHit(result)) {
       return true;
     }
 
-    if (hitTestInlineChildren(result, position)) {
-      print('testling inline');
+    if (preferredLineHeight >= 24) return false;
+    final hitTryOffset = math.min(24 - _textPainter.preferredLineHeight, preferredLineHeight / 2);
+    final dec = Offset(position.dx, position.dy + hitTryOffset);
+    hit = (hitTestInlineChildren(result, dec));
+    if (hit && result.path.any((entry) => entry is TextSpan)) {
       return true;
     }
 
-    return false;
+    final inc = Offset(position.dx, position.dy - hitTryOffset);
+    return hitTestInlineChildren(result, inc);
   }
 
-  List<ClickableRenderParagraph> _getClickableChildren() {
-    return _getChildren(this, '');
-  }
-
-  List<ClickableRenderParagraph> _getChildren(ContainerRenderObjectMixin parent, String indent) {
-    print('${indent}#childCount: ${parent.childCount}');
-    final children = <ClickableRenderParagraph>[];
-    if (parent.firstChild == null) return children;
-    var child = parent.firstChild;
-    while (child != null) {
-      children.addAll(_printChild(child, '$indent\t'));
-      child = parent.childAfter(child);
-    }
-    return children;
-  }
-
-  List<ClickableRenderParagraph> _printChild(RenderObject child, String indent) {
-    if (child is ClickableRenderParagraph) {
-      print('$indent size: ${child.size} -> ${child.parentData}');
-      if (child.childCount == 0) {
-        return [child];
-      }
-    }
-    final children = <ClickableRenderParagraph>[];
-
-    final parentData = child.parentData;
-    print('${indent} ${child.runtimeType} -> PARENT: $parentData');
-    if (child is ContainerRenderObjectMixin) {
-      print('${indent}child count: ${child.childCount}');
-      children.addAll(_getChildren(child, '$indent\t'));
-    } else if (child is RenderProxyBox) {
-      children.addAll(_printChild(child.child!, '$indent\t'));
-    } else if (child is RenderObjectWithChildMixin) {
-      children.addAll(_printChild(child.child!, '$indent\t'));
-    } else {
-      print('$indent #############');
-    }
-    return children;
-  }
-
-  InlineSpan? _getHitTarget(Offset position) {
-    final GlyphInfo? glyph = _textPainter.getClosestGlyphForOffset(position);
-    if (glyph != null) {
-      var bounds = glyph.graphemeClusterLayoutBounds;
-      final padding = (30 - bounds.height) / 2;
-      if (padding > 0) {
-        bounds = Rect.fromLTRB(bounds.left, bounds.top - padding, bounds.right, bounds.bottom + padding);
-      }
-      final InlineSpan? spanHit = bounds.contains(position) ? text.getSpanForPosition(TextPosition(offset: glyph.graphemeClusterCodeUnitRange.start)) : null;
-      if (spanHit is HitTestTarget) {
-        return spanHit;
-      }
-    }
-    return null;
-  }
-
-  // bool _hitTestInlineChildren(BoxHitTestResult result, Offset position) {
-  //   RenderBox? child = firstChild;
-  //   print('testing child: $child ($position) => ${parent.runtimeType}');
-  //   while (child != null) {
-  //     final TextParentData childParentData = child.parentData! as TextParentData;
-  //     print('parentData: $childParentData');
-  //     final Offset? childOffset = childParentData.offset;
-  //     if (childOffset == null) {
-  //       return false;
-  //     }
-  //     final bool isHit = result.addWithPaintOffset(
-  //       offset: childOffset,
-  //       position: position,
-  //       hitTest: (BoxHitTestResult result, Offset transformed) => child!.hitTest(result, position: transformed),
-  //     );
-  //     if (isHit) {
-  //       return true;
-  //     }
-  //     child = childAfter(child);
-  //   }
-  //   return false;
-  // }
+  bool wasHit(HitTestResult result) => result.path.any((entry) => entry.target is TextSpan);
 
   bool _needsClipping = false;
   ui.Shader? _overflowShader;
@@ -603,11 +543,11 @@ class ClickableRenderParagraph extends RenderBox
     _textPainter.markNeedsLayout();
   }
 
-  // Placeholder dimensions representing the sizes of child inline widgets.
-  //
-  // These need to be cached because the text painter's placeholder dimensions
-  // will be overwritten during intrinsic width/height calculations and must be
-  // restored to the original values before final layout and painting.
+// Placeholder dimensions representing the sizes of child inline widgets.
+//
+// These need to be cached because the text painter's placeholder dimensions
+// will be overwritten during intrinsic width/height calculations and must be
+// restored to the original values before final layout and painting.
   List<PlaceholderDimensions>? _placeholderDimensions;
 
   double _adjustMaxWidth(double maxWidth) {
@@ -991,10 +931,10 @@ class ClickableRenderParagraph extends RenderBox
       ..attributedLabel = attributedLabel;
   }
 
-  // Caches [SemanticsNode]s created during [assembleSemanticsNode] so they
-  // can be re-used when [assembleSemanticsNode] is called again. This ensures
-  // stable ids for the [SemanticsNode]s of [TextSpan]s across
-  // [assembleSemanticsNode] invocations.
+// Caches [SemanticsNode]s created during [assembleSemanticsNode] so they
+// can be re-used when [assembleSemanticsNode] is called again. This ensures
+// stable ids for the [SemanticsNode]s of [TextSpan]s across
+// [assembleSemanticsNode] invocations.
   LinkedHashMap<Key, SemanticsNode>? _cachedChildNodes;
 
   @override
@@ -2970,4 +2910,8 @@ class _SelectableFragment with Selectable, Diagnosticable, ChangeNotifier implem
     properties.add(DiagnosticsProperty<TextRange>('range', range));
     properties.add(DiagnosticsProperty<String>('fullText', fullText));
   }
+}
+
+class ExtraOffset extends Offset {
+  ExtraOffset(super.dx, super.dy);
 }
