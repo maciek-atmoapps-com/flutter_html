@@ -509,23 +509,36 @@ class ClickableRenderParagraph extends RenderBox
       return true;
     }
     bool hit = hitTestInlineChildren(result, position);
-    if (hit && wasHit(result)) {
+    if (hit && _wasHit(result)) {
       return true;
+    }
+
+    if (_hasClickableParagraphParent()) {
+      return false;
     }
 
     if (preferredLineHeight >= 24) return false;
     final hitTryOffset = math.min(24 - _textPainter.preferredLineHeight, preferredLineHeight / 2);
-    final dec = Offset(position.dx, position.dy + hitTryOffset);
-    hit = (hitTestInlineChildren(result, dec));
+    final above = Offset(position.dx, position.dy + hitTryOffset);
+    hit = (hitTestInlineChildren(result, above));
     if (hit && result.path.any((entry) => entry is TextSpan)) {
       return true;
     }
 
-    final inc = Offset(position.dx, position.dy - hitTryOffset);
-    return hitTestInlineChildren(result, inc);
+    final below = Offset(position.dx, position.dy - hitTryOffset);
+    return hitTestInlineChildren(result, below);
   }
 
-  bool wasHit(HitTestResult result) => result.path.any((entry) => entry.target is TextSpan);
+  bool _wasHit(HitTestResult result) => result.path.any((entry) => entry.target is TextSpan);
+
+  bool _hasClickableParagraphParent() {
+    var p = parent;
+    while (p != null) {
+      if (p is ClickableRenderParagraph) return true;
+      p = p.parent;
+    }
+    return false;
+  }
 
   bool _needsClipping = false;
   ui.Shader? _overflowShader;
@@ -2910,8 +2923,4 @@ class _SelectableFragment with Selectable, Diagnosticable, ChangeNotifier implem
     properties.add(DiagnosticsProperty<TextRange>('range', range));
     properties.add(DiagnosticsProperty<String>('fullText', fullText));
   }
-}
-
-class ExtraOffset extends Offset {
-  ExtraOffset(super.dx, super.dy);
 }
