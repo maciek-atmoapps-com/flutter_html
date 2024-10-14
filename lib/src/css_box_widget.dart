@@ -935,7 +935,7 @@ class ClickableRichText extends MultiChildRenderObjectWidget {
   }
 
   @override
-  void updateRenderObject(BuildContext context, RenderParagraph renderObject) {
+  void updateRenderObject(BuildContext context, ClickableRenderParagraph renderObject) {
     assert(textDirection != null || debugCheckHasDirectionality(context));
     renderObject
       ..text = text
