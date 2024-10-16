@@ -105,10 +105,10 @@ class TableHtmlExtension extends HtmlExtension {
     throw UnimplementedError("This isn't possible");
   }
 
-  List<int> _getColWidths(List<StyledElement> children) {
-    final widths = <int>[];
+  List<double> _getColWidths(List<StyledElement> children) {
+    final widths = <double>[];
     for (final child in children) {
-      List<int> partialWidths = [];
+      List<double> partialWidths = [];
       if (child is TableRowLayoutElement) {
         partialWidths = _getColWidthsFromRow(child);
       } else {
@@ -116,7 +116,7 @@ class TableHtmlExtension extends HtmlExtension {
       }
       if (partialWidths.isEmpty) continue;
       for (int i = 0; i < partialWidths.length; ++i) {
-        int partial = partialWidths[i];
+        double partial = partialWidths[i];
         if (widths.length <= i) {
           widths.add(partial);
         } else if (widths[i] < partial) {
@@ -127,10 +127,10 @@ class TableHtmlExtension extends HtmlExtension {
     return widths;
   }
 
-  List<int> _getColWidthsFromRow(TableRowLayoutElement row) {
-    List<int> widths = [];
+  List<double> _getColWidthsFromRow(TableRowLayoutElement row) {
+    List<double> widths = [];
     for (final cell in row.children) {
-      int minWidth = 0;
+      double minWidth = 0;
       if (cell is TableCellElement) {
         // Get entire text
         StringBuffer text = StringBuffer();
@@ -140,7 +140,7 @@ class TableHtmlExtension extends HtmlExtension {
 
         final words = _regExp.allMatches(text.toString()).map((match) => match.group(0)!).toList();
         for (final word in words) {
-          int wordWidth = TextPainter.computeWidth(
+          double wordWidth = TextPainter.computeWidth(
             text: TextSpan(
                 text: word,
                 style: TextStyle(
@@ -149,7 +149,7 @@ class TableHtmlExtension extends HtmlExtension {
                   fontWeight: FontWeight.w700,
                 )),
             textDirection: TextDirection.ltr,
-          ).toInt();
+          );
           if (wordWidth > minWidth) {
             minWidth = wordWidth;
           }
@@ -223,7 +223,7 @@ Widget _layoutCells(TableElement table, Map<StyledElement, InlineSpan> parsedCel
     requiredWidth += minWidth;
   }
 
-  List<int> cellWidths;
+  List<double> cellWidths;
   if (requiredWidth < width) {
     final extra = (width - requiredWidth) ~/ table.minWidths.length;
     cellWidths = List.generate(table.minWidths.length, (index) => table.minWidths[index] + extra);
@@ -233,40 +233,10 @@ Widget _layoutCells(TableElement table, Map<StyledElement, InlineSpan> parsedCel
   }
 
   final rows = <TableRowLayoutElement>[];
-  List<TrackSize> columnSizes = <TrackSize>[];
   for (var child in table.tableStructure) {
-    if (child is TableStyleElement) {
-      // Map <col> tags to predetermined column track sizes
-      columnSizes = child.children
-          .where((c) => c.name == "col")
-          .map((c) {
-            final span = int.tryParse(c.attributes["span"] ?? "1") ?? 1;
-            final colWidth = c.attributes["width"];
-            return List.generate(span, (index) {
-              if (colWidth != null && colWidth.endsWith("%")) {
-                final percentageSize = double.tryParse(colWidth.substring(0, colWidth.length - 1));
-                return percentageSize != null && !percentageSize.isNaN ? FlexibleTrackSize(percentageSize / 100) : const IntrinsicContentTrackSize();
-              } else if (colWidth != null) {
-                final fixedPxSize = double.tryParse(colWidth);
-                return fixedPxSize != null ? FixedTrackSize(fixedPxSize) : const IntrinsicContentTrackSize();
-              } else {
-                return const IntrinsicContentTrackSize();
-              }
-            });
-          })
-          .expand((element) => element)
-          .toList(growable: false);
-    } else if (child is TableSectionLayoutElement) {
+    if (child is TableSectionLayoutElement) {
       rows.addAll(child.children.whereType());
     } else if (child is TableRowLayoutElement) {
-      child.style.width = Width(width);
-      for (final cell in child.children) {
-        int counter = 0;
-        if (cell is TableCellElement) {
-          cell.style.width = Width(cellWidths[counter].toDouble());
-          ++counter;
-        }
-      }
       rows.add(child);
     }
   }
@@ -343,8 +313,8 @@ Widget _layoutCells(TableElement table, Map<StyledElement, InlineSpan> parsedCel
   }
 
   // Create column tracks (insofar there were no colgroups that already defined them)
-  List<TrackSize> finalColumnSizes = columnSizes.take(columnMax).toList();
-  finalColumnSizes += List.generate(max(0, columnMax - finalColumnSizes.length), (_) => const IntrinsicContentTrackSize());
+  List<TrackSize> finalColumnSizes = List.generate(cellWidths.length, (index)=>FixedTrackSize(cellWidths[index]));
+  // finalColumnSizes += List.generate(max(0, columnMax - finalColumnSizes.length), (_) => const IntrinsicContentTrackSize());
 
   if (finalColumnSizes.isEmpty || rowSizes.isEmpty) {
     // No actual cells to show
@@ -354,7 +324,7 @@ Widget _layoutCells(TableElement table, Map<StyledElement, InlineSpan> parsedCel
   return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: SizedBox(
-        width: requiredWidth,
+        width: width,
         child: LayoutGrid(
           gridFit: GridFit.loose,
           columnSizes: finalColumnSizes,
@@ -432,7 +402,7 @@ class TableCellElement extends StyledElement {
 
 class TableElement extends StyledElement {
   final List<StyledElement> tableStructure;
-  final List<int> minWidths;
+  final List<double> minWidths;
 
   TableElement({
     required super.name,
