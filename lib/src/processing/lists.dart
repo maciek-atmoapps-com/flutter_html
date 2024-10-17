@@ -5,7 +5,23 @@ import 'package:flutter_html/flutter_html.dart';
 import 'package:list_counter/list_counter.dart';
 
 class ListProcessing {
+  static final dash = CounterStyle.define(
+    name: 'dash',
+    system: System.cyclic,
+    symbols: ['—'],
+    suffix: ' ',
+  );
+
+  static final none = CounterStyle.define(
+    name: 'none',
+    system: System.cyclic,
+    symbols: [''],
+    suffix: '',
+  );
+
   static StyledElement processLists(StyledElement tree) {
+    CounterStyleRegistry.register(none);
+    CounterStyleRegistry.register(dash);
     tree = _preprocessListMarkers(tree);
     tree = _processListCounters(tree);
     tree = _processListMarkers(tree);
@@ -96,6 +112,9 @@ class ListProcessing {
   /// [_processListMarkers] finally applies the marker content to the tree
   /// as a [Marker] on the [Style] object.
   static StyledElement _processListMarkers(StyledElement tree) {
+    if(tree.name == 'ul' && tree.style.listStyleType?.counterStyle == 'none'){
+      tree.style.padding = null;
+    }
     if (tree.style.display == Display.listItem) {
       final listStyleType = tree.style.listStyleType ?? ListStyleType.decimal;
       final counterStyle = CounterStyleRegistry.lookup(

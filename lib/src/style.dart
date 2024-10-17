@@ -612,6 +612,7 @@ enum ListStyleType {
   cjkEarthlyBranch('cjk-earthly-branch'),
   cjkHeavenlyStem('cjk-heavenly-stem'),
   cjkIdeographic('cjk-ideographic'),
+  dash('dash'),
   decimal('decimal'),
   decimalLeadingZero('decimal-leading-zero'),
   devanagari('devanagari'),
