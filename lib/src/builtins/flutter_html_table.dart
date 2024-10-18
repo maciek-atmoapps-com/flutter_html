@@ -258,6 +258,8 @@ Widget _layoutCells(TableElement table, Map<StyledElement, InlineSpan> parsedCel
       ...rowSpanOffsets.map((value) => value - 1).where((value) => value > 0),
       ...row.children.whereType<TableCellElement>().map((cell) => cell.rowspan - 1),
     ];
+    // Ignore width set in CSS, there is only one proper layout...
+    row.children.whereType<TableCellElement>().forEach((cell)=> cell.style.width = null);
   }
 
   // Place the cells in the rows/columns
