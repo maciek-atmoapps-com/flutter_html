@@ -178,7 +178,12 @@ class TableHtmlExtension extends HtmlExtension {
           style: context.styledElement!.style,
           child: LayoutBuilder(
             builder: (ctx, constraints) {
-              final width = MediaQuery.sizeOf(ctx).width;
+              double width;
+              if (constraints.hasBoundedWidth) {
+                width = constraints.maxWidth;
+              } else {
+                width = MediaQuery.sizeOf(ctx).width - 32;
+              }
               return _layoutCells(
                 context.styledElement as TableElement,
                 context.builtChildrenMap!,
@@ -217,7 +222,6 @@ List<TableCellElement> _getCellDescendants(List<StyledElement> children) {
 }
 
 Widget _layoutCells(TableElement table, Map<StyledElement, InlineSpan> parsedCells, ExtensionContext context, double width) {
-  width -= 32;
   double requiredWidth = 0;
   for (final minWidth in table.minWidths) {
     requiredWidth += minWidth;
@@ -259,8 +263,10 @@ Widget _layoutCells(TableElement table, Map<StyledElement, InlineSpan> parsedCel
       ...row.children.whereType<TableCellElement>().map((cell) => cell.rowspan - 1),
     ];
     // Ignore width set in CSS, there is only one proper layout...
-    row.children.whereType<TableCellElement>().forEach((cell)=> cell.style.width = null);
+    row.children.whereType<TableCellElement>().forEach((cell) => cell.style.width = null);
   }
+  double borderWidth = rows.first.children.whereType<TableCellElement>().first.style.border?.left.width ?? 0;
+  double borderAdjustment = borderWidth * columnMax / (columnMax + 1);
 
   // Place the cells in the rows/columns
   final cells = <GridPlacement>[];
@@ -286,15 +292,12 @@ Widget _layoutCells(TableElement table, Map<StyledElement, InlineSpan> parsedCel
           child: CssBoxWidget(
             style: child.style.merge(row.style),
             child: Builder(builder: (context) {
-              final alignment =
-                  child.style.direction ?? Directionality.of(context);
+              final alignment = child.style.direction ?? Directionality.of(context);
               return SizedBox.expand(
                 child: Container(
                   alignment: _getCellAlignment(child, alignment),
                   child: CssBoxWidget.withInlineSpanChildren(
-                    children: [
-                      parsedCells[child] ?? const TextSpan(text: "error")
-                    ],
+                    children: [parsedCells[child] ?? const TextSpan(text: "error")],
                     style: Style(),
                   ),
                 ),
@@ -315,8 +318,7 @@ Widget _layoutCells(TableElement table, Map<StyledElement, InlineSpan> parsedCel
   }
 
   // Create column tracks (insofar there were no colgroups that already defined them)
-  List<TrackSize> finalColumnSizes = List.generate(cellWidths.length, (index)=>FixedTrackSize(cellWidths[index]));
-  // finalColumnSizes += List.generate(max(0, columnMax - finalColumnSizes.length), (_) => const IntrinsicContentTrackSize());
+  List<TrackSize> finalColumnSizes = List.generate(cellWidths.length, (index) => FixedTrackSize(cellWidths[index] - borderAdjustment));
 
   if (finalColumnSizes.isEmpty || rowSizes.isEmpty) {
     // No actual cells to show
@@ -326,7 +328,6 @@ Widget _layoutCells(TableElement table, Map<StyledElement, InlineSpan> parsedCel
   return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: SizedBox(
-        width: width,
         child: LayoutGrid(
           gridFit: GridFit.loose,
           columnSizes: finalColumnSizes,
