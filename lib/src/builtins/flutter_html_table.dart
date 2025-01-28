@@ -36,8 +36,6 @@ class TableHtmlExtension extends HtmlExtension {
     if (context.elementName == "table") {
       final cellDescendants = _getCellDescendants(children);
 
-      final colWidths = _getColWidths(children);
-
       return TableElement(
         name: context.elementName,
         elementId: context.id,
@@ -46,7 +44,6 @@ class TableHtmlExtension extends HtmlExtension {
         cellDescendants: cellDescendants,
         style: Style(display: Display.block),
         node: context.node,
-        minWidths: colWidths,
       );
     }
 
@@ -105,71 +102,6 @@ class TableHtmlExtension extends HtmlExtension {
     throw UnimplementedError("This isn't possible");
   }
 
-  List<double> _getColWidths(List<StyledElement> children) {
-    final widths = <double>[];
-    for (final child in children) {
-      List<double> partialWidths = [];
-      if (child is TableRowLayoutElement) {
-        partialWidths = _getColWidthsFromRow(child);
-      } else {
-        partialWidths = _getColWidths(child.children);
-      }
-      if (partialWidths.isEmpty) continue;
-      for (int i = 0; i < partialWidths.length; ++i) {
-        double partial = partialWidths[i];
-        if (widths.length <= i) {
-          widths.add(partial);
-        } else if (widths[i] < partial) {
-          widths[i] = partial;
-        }
-      }
-    }
-    return widths;
-  }
-
-  List<double> _getColWidthsFromRow(TableRowLayoutElement row) {
-    List<double> widths = [];
-    for (final cell in row.children) {
-      double minWidth = 0;
-      if (cell is TableCellElement) {
-        // Get entire text
-        StringBuffer text = StringBuffer();
-        for (final child in cell.children) {
-          text.write(_getText(child));
-        }
-
-        final words = _regExp.allMatches(text.toString()).map((match) => match.group(0)!).toList();
-        for (final word in words) {
-          double wordWidth = TextPainter.computeWidth(
-            text: TextSpan(
-                text: word,
-                style: TextStyle(
-                  fontSize: cell.style.fontSize?.value ?? 16,
-                  fontFamily: cell.style.fontFamily,
-                  fontWeight: FontWeight.w700,
-                )),
-            textDirection: TextDirection.ltr,
-          );
-          if (wordWidth > minWidth) {
-            minWidth = wordWidth;
-          }
-        }
-      }
-      minWidth += 32;
-      widths.add(minWidth);
-    }
-    return widths;
-  }
-
-  String _getText(StyledElement element) {
-    if (element is TextContentElement) return element.text ?? '';
-    StringBuffer buffer = StringBuffer();
-    for (final child in element.children) {
-      buffer.write(_getText(child));
-    }
-    return buffer.toString();
-  }
-
   @override
   InlineSpan build(ExtensionContext context) {
     if (context.elementName == "table") {
@@ -222,17 +154,18 @@ List<TableCellElement> _getCellDescendants(List<StyledElement> children) {
 }
 
 Widget _layoutCells(TableElement table, Map<StyledElement, InlineSpan> parsedCells, ExtensionContext context, double width) {
+  final minWidths = _getColWidths(table.tableStructure);
   double requiredWidth = 0;
-  for (final minWidth in table.minWidths) {
+  for (final minWidth in minWidths) {
     requiredWidth += minWidth;
   }
 
   List<double> cellWidths;
   if (requiredWidth < width) {
-    final extra = (width - requiredWidth) ~/ table.minWidths.length;
-    cellWidths = List.generate(table.minWidths.length, (index) => table.minWidths[index] + extra);
+    final extra = (width - requiredWidth) / minWidths.length;
+    cellWidths = List.generate(minWidths.length, (index) => minWidths[index] + extra);
   } else {
-    cellWidths = table.minWidths;
+    cellWidths = minWidths;
     width = requiredWidth + 32;
   }
 
@@ -265,8 +198,6 @@ Widget _layoutCells(TableElement table, Map<StyledElement, InlineSpan> parsedCel
     // Ignore width set in CSS, there is only one proper layout...
     row.children.whereType<TableCellElement>().forEach((cell) => cell.style.width = null);
   }
-  double borderWidth = rows.first.children.whereType<TableCellElement>().first.style.border?.left.width ?? 0;
-  double borderAdjustment = borderWidth * columnMax / (columnMax + 1);
 
   // Place the cells in the rows/columns
   final cells = <GridPlacement>[];
@@ -318,7 +249,7 @@ Widget _layoutCells(TableElement table, Map<StyledElement, InlineSpan> parsedCel
   }
 
   // Create column tracks (insofar there were no colgroups that already defined them)
-  List<TrackSize> finalColumnSizes = List.generate(cellWidths.length, (index) => FixedTrackSize(cellWidths[index] - borderAdjustment));
+  List<TrackSize> finalColumnSizes = List.generate(cellWidths.length, (index) => FixedTrackSize(cellWidths[index]));
 
   if (finalColumnSizes.isEmpty || rowSizes.isEmpty) {
     // No actual cells to show
@@ -335,6 +266,73 @@ Widget _layoutCells(TableElement table, Map<StyledElement, InlineSpan> parsedCel
           children: cells,
         ),
       ));
+}
+
+
+List<double> _getColWidths(List<StyledElement> children) {
+  final widths = <double>[];
+  for (final child in children) {
+    List<double> partialWidths = [];
+    if (child is TableRowLayoutElement) {
+      partialWidths = _getColWidthsFromRow(child);
+    } else {
+      partialWidths = _getColWidths(child.children);
+    }
+    if (partialWidths.isEmpty) continue;
+    for (int i = 0; i < partialWidths.length; ++i) {
+      double partial = partialWidths[i];
+      if (widths.length <= i) {
+        widths.add(partial);
+      } else if (widths[i] < partial) {
+        widths[i] = partial;
+      }
+    }
+  }
+  return widths;
+}
+
+List<double> _getColWidthsFromRow(TableRowLayoutElement row) {
+  List<double> widths = [];
+  for (final cell in row.children) {
+    double minWidth = 0;
+    if (cell is TableCellElement) {
+      // Get entire text
+      StringBuffer text = StringBuffer();
+      for (final child in cell.children) {
+        text.write(_getText(child));
+      }
+
+      final words = _regExp.allMatches(text.toString()).map((match) => match.group(0)!).toList();
+      for (final word in words) {
+        double wordWidth = TextPainter.computeWidth(
+          text: TextSpan(
+              text: word,
+              style: TextStyle(
+                fontSize: cell.style.fontSize?.value ?? 16,
+                fontFamily: cell.style.fontFamily,
+                fontWeight: cell.style.fontWeight,
+                fontStyle: cell.style.fontStyle,
+              )),
+          textDirection: TextDirection.ltr,
+        );
+        if (wordWidth > minWidth) {
+          minWidth = wordWidth;
+        }
+      }
+    }
+    minWidth += 32;
+    widths.add(minWidth);
+  }
+  return widths;
+}
+
+String _getText(StyledElement element) {
+  if (element is TextContentElement) return element.text ?? '';
+  StringBuffer buffer = StringBuffer();
+  for (final child in element.children) {
+    buffer.write(_getText(child));
+  }
+  return buffer.toString();
 }
 
 Alignment _getCellAlignment(TableCellElement cell, TextDirection alignment) {
@@ -405,7 +403,6 @@ class TableCellElement extends StyledElement {
 
 class TableElement extends StyledElement {
   final List<StyledElement> tableStructure;
-  final List<double> minWidths;
 
   TableElement({
     required super.name,
@@ -415,7 +412,6 @@ class TableElement extends StyledElement {
     required this.tableStructure,
     required super.style,
     required super.node,
-    this.minWidths = const [],
   }) : super(children: cellDescendants);
 }
 
