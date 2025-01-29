@@ -13,8 +13,6 @@ import 'package:flutter_layout_grid/flutter_layout_grid.dart';
 /// Currently, nested tables are not supported.
 ///
 ///
-final RegExp _regExp = RegExp(r'[\w/\(\)]+');
-
 class TableHtmlExtension extends HtmlExtension {
   const TableHtmlExtension();
 
@@ -268,7 +266,6 @@ Widget _layoutCells(TableElement table, Map<StyledElement, InlineSpan> parsedCel
       ));
 }
 
-
 List<double> _getColWidths(List<StyledElement> children) {
   final widths = <double>[];
   for (final child in children) {
@@ -294,45 +291,58 @@ List<double> _getColWidths(List<StyledElement> children) {
 List<double> _getColWidthsFromRow(TableRowLayoutElement row) {
   List<double> widths = [];
   for (final cell in row.children) {
-    double minWidth = 0;
     if (cell is TableCellElement) {
-      // Get entire text
-      StringBuffer text = StringBuffer();
+      WidthInfo info = WidthInfo();
       for (final child in cell.children) {
-        text.write(_getText(child));
+        _getCellInfo(child, info);
       }
-
-      final words = _regExp.allMatches(text.toString()).map((match) => match.group(0)!).toList();
-      for (final word in words) {
-        double wordWidth = TextPainter.computeWidth(
-          text: TextSpan(
-              text: word,
-              style: TextStyle(
-                fontSize: cell.style.fontSize?.value ?? 16,
-                fontFamily: cell.style.fontFamily,
-                fontWeight: cell.style.fontWeight,
-                fontStyle: cell.style.fontStyle,
-              )),
-          textDirection: TextDirection.ltr,
-        );
-        if (wordWidth > minWidth) {
-          minWidth = wordWidth;
-        }
-      }
+      double minWidth = info.requiredWidth + 32;
+      widths.add(minWidth);
     }
-    minWidth += 32;
-    widths.add(minWidth);
   }
   return widths;
 }
 
-String _getText(StyledElement element) {
-  if (element is TextContentElement) return element.text ?? '';
-  StringBuffer buffer = StringBuffer();
-  for (final child in element.children) {
-    buffer.write(_getText(child));
+void _getCellInfo(StyledElement element, WidthInfo info) {
+  if (element is TextContentElement) {
+    final regexp = RegExp(r'\s+|(?=[()/\-—])|(?<=[()/\-—])');
+    final text = element.text;
+    if (text == null || text.isEmpty) return;
+    final words = text.split(regexp).where((word) => word.isNotEmpty).toList();
+    for (final word in words) {
+      double wordWidth = TextPainter.computeWidth(
+        text: TextSpan(
+            text: word,
+            style: TextStyle(
+              fontSize: element.style.fontSize?.value ?? 16,
+              fontFamily: element.style.fontFamily,
+              fontWeight: element.style.fontWeight,
+              fontStyle: element.style.fontStyle,
+            )),
+        textDirection: TextDirection.ltr,
+      );
+      if (info.join && !regexp.hasMatch(word[0])) {
+        info.width += wordWidth;
+      } else {
+        info.width = wordWidth;
+      }
+      if (info.width > info.requiredWidth) {
+        info.requiredWidth = info.width;
+      }
+      info.join = !regexp.hasMatch(word[word.length - 1]);
+    }
+    info.join = !regexp.hasMatch(text[text.length - 1]);
+  } else {
+    for (final child in element.children) {
+      _getCellInfo(child, info);
+    }
   }
-  return buffer.toString();
+}
+
+class WidthInfo {
+  double width = 0;
+  double requiredWidth = 0;
+  bool join = false;
 }
 
 Alignment _getCellAlignment(TableCellElement cell, TextDirection alignment) {
