@@ -305,10 +305,11 @@ List<double> _getColWidthsFromRow(TableRowLayoutElement row) {
 
 void _getCellInfo(StyledElement element, WidthInfo info) {
   if (element is TextContentElement) {
-    final regexp = RegExp(r'\s+|(?=[()/\-—])|(?<=[()/\-—])');
+    final regex = RegExp(r'\w+|\s+|[^\w\s]');
+    final wordRegex = RegExp(r'\w+');
     final text = element.text;
     if (text == null || text.isEmpty) return;
-    final words = text.split(regexp).where((word) => word.isNotEmpty).toList();
+    final words = regex.allMatches(text).map((m) => m.group(0)!).toList();
     for (final word in words) {
       double wordWidth = TextPainter.computeWidth(
         text: TextSpan(
@@ -321,7 +322,7 @@ void _getCellInfo(StyledElement element, WidthInfo info) {
             )),
         textDirection: TextDirection.ltr,
       );
-      if (info.join && !regexp.hasMatch(word[0])) {
+      if (info.join && wordRegex.hasMatch(word)) {
         info.width += wordWidth;
       } else {
         info.width = wordWidth;
@@ -329,9 +330,8 @@ void _getCellInfo(StyledElement element, WidthInfo info) {
       if (info.width > info.requiredWidth) {
         info.requiredWidth = info.width;
       }
-      info.join = !regexp.hasMatch(word[word.length - 1]);
+      info.join = wordRegex.hasMatch(word);
     }
-    info.join = !regexp.hasMatch(text[text.length - 1]);
   } else {
     for (final child in element.children) {
       _getCellInfo(child, info);
