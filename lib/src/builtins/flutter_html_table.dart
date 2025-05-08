@@ -14,20 +14,22 @@ import 'package:flutter_layout_grid/flutter_layout_grid.dart';
 ///
 ///
 class TableHtmlExtension extends HtmlExtension {
-  const TableHtmlExtension();
+  final bool shrinkWrap;
+
+  const TableHtmlExtension({this.shrinkWrap = false});
 
   @override
   Set<String> get supportedTags => {
-        "table",
-        "tr",
-        "tbody",
-        "tfoot",
-        "thead",
-        "th",
-        "td",
-        "col",
-        "colgroup",
-      };
+    "table",
+    "tr",
+    "tbody",
+    "tfoot",
+    "thead",
+    "th",
+    "td",
+    "col",
+    "colgroup",
+  };
 
   @override
   StyledElement prepare(ExtensionContext context, List<StyledElement> children) {
@@ -49,13 +51,13 @@ class TableHtmlExtension extends HtmlExtension {
       return TableCellElement(
         style: context.elementName == "th"
             ? Style(
-                fontWeight: FontWeight.bold,
-                textAlign: TextAlign.center,
-                verticalAlign: VerticalAlign.middle,
-              )
+          fontWeight: FontWeight.bold,
+          textAlign: TextAlign.center,
+          verticalAlign: VerticalAlign.middle,
+        )
             : Style(
-                verticalAlign: VerticalAlign.middle,
-              ),
+          verticalAlign: VerticalAlign.middle,
+        ),
         children: children,
         node: context.node,
         name: context.elementName,
@@ -105,6 +107,7 @@ class TableHtmlExtension extends HtmlExtension {
     if (context.elementName == "table") {
       return WidgetSpan(
         child: CssBoxWidget(
+          shrinkWrap: shrinkWrap,
           style: context.styledElement!.style,
           child: LayoutBuilder(
             builder: (ctx, constraints) {
@@ -119,6 +122,7 @@ class TableHtmlExtension extends HtmlExtension {
                 context.builtChildrenMap!,
                 context,
                 width,
+                shrinkWrap,
               );
             },
           ),
@@ -151,7 +155,7 @@ List<TableCellElement> _getCellDescendants(List<StyledElement> children) {
   return descendants;
 }
 
-Widget _layoutCells(TableElement table, Map<StyledElement, InlineSpan> parsedCells, ExtensionContext context, double width) {
+Widget _layoutCells(TableElement table, Map<StyledElement, InlineSpan> parsedCells, ExtensionContext context, double width, bool shrinkWrap) {
   final minWidths = _getColWidths(table.tableStructure);
   double requiredWidth = 0;
   for (final minWidth in minWidths) {
@@ -159,7 +163,7 @@ Widget _layoutCells(TableElement table, Map<StyledElement, InlineSpan> parsedCel
   }
 
   List<double> cellWidths;
-  if (requiredWidth < width) {
+  if (!shrinkWrap && requiredWidth < width) {
     final extra = (width - requiredWidth) / minWidths.length;
     cellWidths = List.generate(minWidths.length, (index) => minWidths[index] + extra);
   } else {
@@ -179,7 +183,7 @@ Widget _layoutCells(TableElement table, Map<StyledElement, InlineSpan> parsedCel
   // All table rows have a height intrinsic to their (spanned) contents
   final rowSizes = List.generate(
     rows.length,
-    (_) => const IntrinsicContentTrackSize(),
+        (_) => const IntrinsicContentTrackSize(),
   );
 
   // Calculate column bounds
@@ -219,6 +223,7 @@ Widget _layoutCells(TableElement table, Map<StyledElement, InlineSpan> parsedCel
           rowStart: rowi,
           rowSpan: min(child.rowspan, rows.length - rowi),
           child: CssBoxWidget(
+            shrinkWrap: shrinkWrap,
             style: child.style.merge(row.style),
             child: Builder(builder: (context) {
               final alignment = child.style.direction ?? Directionality.of(context);
