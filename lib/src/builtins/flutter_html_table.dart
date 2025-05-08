@@ -20,16 +20,16 @@ class TableHtmlExtension extends HtmlExtension {
 
   @override
   Set<String> get supportedTags => {
-    "table",
-    "tr",
-    "tbody",
-    "tfoot",
-    "thead",
-    "th",
-    "td",
-    "col",
-    "colgroup",
-  };
+        "table",
+        "tr",
+        "tbody",
+        "tfoot",
+        "thead",
+        "th",
+        "td",
+        "col",
+        "colgroup",
+      };
 
   @override
   StyledElement prepare(ExtensionContext context, List<StyledElement> children) {
@@ -51,13 +51,13 @@ class TableHtmlExtension extends HtmlExtension {
       return TableCellElement(
         style: context.elementName == "th"
             ? Style(
-          fontWeight: FontWeight.bold,
-          textAlign: TextAlign.center,
-          verticalAlign: VerticalAlign.middle,
-        )
+                fontWeight: FontWeight.bold,
+                textAlign: TextAlign.center,
+                verticalAlign: VerticalAlign.middle,
+              )
             : Style(
-          verticalAlign: VerticalAlign.middle,
-        ),
+                verticalAlign: VerticalAlign.middle,
+              ),
         children: children,
         node: context.node,
         name: context.elementName,
@@ -183,7 +183,7 @@ Widget _layoutCells(TableElement table, Map<StyledElement, InlineSpan> parsedCel
   // All table rows have a height intrinsic to their (spanned) contents
   final rowSizes = List.generate(
     rows.length,
-        (_) => const IntrinsicContentTrackSize(),
+    (_) => const IntrinsicContentTrackSize(),
   );
 
   // Calculate column bounds
