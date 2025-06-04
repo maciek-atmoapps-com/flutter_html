@@ -293,8 +293,13 @@ class _FixedHeadersFit8TableState extends State<FixedHeadersFit8Table> {
 
       final bodyCellsI = bodyCellsBuildInfoElements.where((e) => e.rowi == i).toList(growable: false);
       List<TrackSize> bodyColumnSizes = [];
+      final headerNotNullSpan = headerColumnSpan ?? 0;
       if (bodyCellsI.isNotEmpty) {
-        bodyColumnSizes = finalColumnSizes.sublist(headerColumnSpan ?? 0, bodyCellsI.length + 1);
+        final headerColumnSize = bodyCellsI.fold<int>(0, (previousValue, element) {
+          final columnSpan = getColumnSpan(element.child, columnMax, element.columni) ?? 0;
+          return previousValue + columnSpan;
+        });
+        bodyColumnSizes = finalColumnSizes.sublist(headerNotNullSpan, headerColumnSize + headerNotNullSpan);
       }
 
       /// Check is currentLayout is the same as previous
@@ -355,9 +360,7 @@ class _FixedHeadersFit8TableState extends State<FixedHeadersFit8Table> {
       }
     }
 
-
-    final layoutToSliverAdapter = LayoutInfoToSliverAdapter(rowSizes, _verticalScrollGroupSynchronizer,
-        _horizontalScrollGroupSynchronizer);
+    final layoutToSliverAdapter = LayoutInfoToSliverAdapter(rowSizes, _verticalScrollGroupSynchronizer, _horizontalScrollGroupSynchronizer);
     final sliverToBoxAdapterList = layoutBuilderInfoList.map((e) => layoutToSliverAdapter.transform(e)).toList(growable: false);
 
     return SizedBox(
