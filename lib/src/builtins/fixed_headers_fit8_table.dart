@@ -48,7 +48,7 @@ class _FixedHeadersFit8TableState extends State<FixedHeadersFit8Table> {
   }
 
   void _measureWidgets() {
-    if(!mounted) return;
+    if (!mounted) return;
     final headerContext = _headerContentKey.currentContext;
     double? newHeaderHeight;
     bool isContextNull = false;
@@ -184,9 +184,11 @@ class _FixedHeadersFit8TableState extends State<FixedHeadersFit8Table> {
     late List<GridPlacement> headersRowGridPlacement = [];
 
     late List<GridPlacement> headersColumnGridPlacement = [];
-    late List<GridPlacementBuildInfo> headersColumnBuildInfoElements = [];
 
+    /// Collect build info to rebuild widget with different height
+    late List<GridPlacementBuildInfo> headersColumnBuildInfoElements = [];
     late List<GridPlacementBuildInfo> bodyCellsBuildInfoElements = [];
+
     for (var row in rows) {
       int columni = 0;
       int lastHeaderColspan = 1;
@@ -240,10 +242,10 @@ class _FixedHeadersFit8TableState extends State<FixedHeadersFit8Table> {
       return const SizedBox();
     }
 
-    // prepare data for render offstage (invisible view) to calculate its height
+    // Prepare data for render offstage (invisible view) to calculate its height.
     List<Widget> intrinsicHeightRowsList = _prepareIntrinsicHeightRowsList(finalColumnSizes, rowSizes, bodyCells, headersColumnGridPlacement);
 
-    // header row is the first row of table. It will be sticky
+    // Header row is the first row of table. It will be sticky.
     final headerRowLayoutGrid =
         LayoutGrid(gridFit: GridFit.passthrough, columnSizes: finalColumnSizes.sublist(1), rowSizes: rowSizes, children: headersRowGridPlacement);
     final headerRowContent = IntrinsicHeight(
@@ -278,9 +280,11 @@ class _FixedHeadersFit8TableState extends State<FixedHeadersFit8Table> {
       );
     }
 
+    // Initialize values before long for loop
     List<HeaderLayoutBuilderInfo> headerLayoutGrids = [];
     List<BodyLayoutBuilderInfo> bodyLayoutGrids = [];
     List<LayoutBuilderInfo> layoutBuilderInfoList = [];
+
     for (int i = 0; i < _calculatedFullRowIntrinsicHeightList.length; ++i) {
       /// Get info about header column sizes for later comparison is header column sized was changed
       final headerColumnI = headersColumnBuildInfoElements.where((e) => e.rowi == i).firstOrNull;
@@ -303,15 +307,15 @@ class _FixedHeadersFit8TableState extends State<FixedHeadersFit8Table> {
       }
 
       /// Build info about header and add it to appropriate category
-      //TODO: for every new Layout we need to edit row and start from 0 (instead of 1)
       HeaderLayoutBuilderInfo? matchingHeaderLayoutBuilderInfo;
       if (headerColumnI != null) {
+        //if it is differentLayout we start from index 0
+        //else we get lastHeaderIndex
         final rowi = isDifferentLayout ? 0 : (layoutBuilderInfoList.last.lastHeaderIdx ?? 0) + 1;
         final headerGridPlacement = buildGridPlacement(
             headerColumnI.columni, headerColumnI.child, headerColumnI.columnMax, rowi, headerColumnI.rows, headerColumnI.row,
             height: _calculatedFullRowIntrinsicHeightList[i]);
         headerColumnSizes = finalColumnSizes.sublist(0, headerColumnSpan);
-        //TODO: instead of lastIdx you can get just last element from headerLayoutGrids
         matchingHeaderLayoutBuilderInfo = headerLayoutGrids.where((e) => e.lastIdx == (i - 1) && e.columnSizes == headerColumnSizes).firstOrNull;
         if (matchingHeaderLayoutBuilderInfo != null) {
           matchingHeaderLayoutBuilderInfo.add(headerGridPlacement, lastIdx: i);
@@ -326,11 +330,13 @@ class _FixedHeadersFit8TableState extends State<FixedHeadersFit8Table> {
 
       /// Build info about cells and add it to appropriate category
       for (var e in bodyCellsI) {
+        //if it is differentLayout we start from index 0
+        //else we get last body index
         final rowi = isDifferentLayout ? 0 : (layoutBuilderInfoList.last.lastBodyIdx ?? 0) + 1;
         final cellGridPlacement = buildGridPlacement(e.columni, e.child, e.columnMax, rowi, e.rows, e.row, height: _calculatedFullRowIntrinsicHeightList[i]);
         cellsFixedSizeRowElements.add(cellGridPlacement);
       }
-      //TODO: instead of lastIdx you can get just last element from bodyLayoutGrids
+
       matchingBodyLayoutBuilderInfo = bodyLayoutGrids.where((e) => e.lastIdx == (i - 1) && e.columnSizes == bodyColumnSizes).firstOrNull;
       if (matchingBodyLayoutBuilderInfo != null) {
         matchingBodyLayoutBuilderInfo.add(cellsFixedSizeRowElements, lastIdx: i);
@@ -341,18 +347,17 @@ class _FixedHeadersFit8TableState extends State<FixedHeadersFit8Table> {
 
       /// Add to layoutBuilderInfoList
       if (isDifferentLayout) {
-        //TODO: add header and body with from row = 0;
         final layoutBuilderInfo = LayoutBuilderInfo(headerColumnSizes, bodyColumnSizes);
         layoutBuilderInfo.add(matchingHeaderLayoutBuilderInfo, matchingBodyLayoutBuilderInfo);
         layoutBuilderInfoList.add(layoutBuilderInfo);
       } else {
-        //TODO: add header and body with standard way
         layoutBuilderInfoList.last.add(matchingHeaderLayoutBuilderInfo, matchingBodyLayoutBuilderInfo);
       }
     }
-    //TODO: convert layoutBuilderInfoList to List<SliverToBoxAdapter> and pass it below ...sliverAdapters below SliverPersistentHeader
+
+
     final layoutToSliverAdapter = LayoutInfoToSliverAdapter(rowSizes, _verticalScrollGroupSynchronizer,
-        _horizontalScrollGroupSynchronizer); //_horizontalController2, _verticalController1, _verticalController2, _horizontalSpannableController);
+        _horizontalScrollGroupSynchronizer);
     final sliverToBoxAdapterList = layoutBuilderInfoList.map((e) => layoutToSliverAdapter.transform(e)).toList(growable: false);
 
     return SizedBox(
@@ -613,15 +618,11 @@ class _MySliverPersistentRowHeaderDelegate extends SliverPersistentHeaderDelegat
 
   @override
   Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    // Możesz tutaj dodać logikę, jeśli chcesz, aby wygląd nagłówka
-    // zmieniał się w zależności od shrinkOffset (jak bardzo został "ściśnięty").
-    // Dla prostego, statycznego nagłówka, który tylko się przypina:
     return SizedBox.expand(child: child);
   }
 
   @override
   bool shouldRebuild(_MySliverPersistentRowHeaderDelegate oldDelegate) {
-    // Przebuduj, jeśli zmieniła się minimalna/maksymalna wysokość lub dziecko.
     return maxHeight != oldDelegate.maxHeight || minHeight != oldDelegate.minHeight || child != oldDelegate.child;
   }
 }
