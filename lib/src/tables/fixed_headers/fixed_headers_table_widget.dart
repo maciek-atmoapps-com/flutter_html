@@ -255,32 +255,33 @@ class _FixedHeadersTableWidgetState extends State<FixedHeadersTableWidget> {
       return const SizedBox();
     }
 
-    // Header row is the first row of table. It will be sticky.
-    final headerRowLayoutGrid =
-        LayoutGrid(gridFit: GridFit.passthrough, columnSizes: finalColumnSizes.sublist(1), rowSizes: rowSizes, children: headersRowGridPlacement);
-
-    final headerRowContent = IntrinsicHeight(
-      key: _headerContentKey,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(width: (finalColumnSizes[0] as FixedTrackSize).sizeInPx, child: cornerLayoutGrid),
-          Expanded(
-            child: SingleChildScrollView(
-              controller: _horizontalRowScrollController,
-              scrollDirection: Axis.horizontal,
-              physics: const ClampingScrollPhysics(),
-              child: headerRowLayoutGrid,
-            ),
-          ),
-        ],
-      ),
-    );
-
     // If not measured yet, render whole view to calculate height
     if (!_isMeasured) {
       // Prepare data for render offstage (invisible view) to calculate its height.
       List<Widget> intrinsicHeightRowsList = _prepareIntrinsicHeightRowsList(finalColumnSizes, rowSizes, bodyCells, headersColumnGridPlacement);
+
+      // Header row is the first row of table. It will be sticky.
+      final headerRowLayoutGrid =
+      LayoutGrid(gridFit: GridFit.passthrough, columnSizes: finalColumnSizes.sublist(1), rowSizes: rowSizes, children: headersRowGridPlacement);
+
+      final headerRowContent = IntrinsicHeight(
+        key: _headerContentKey,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(width: (finalColumnSizes[0] as FixedTrackSize).sizeInPx, child: cornerLayoutGrid),
+            Expanded(
+              child: SingleChildScrollView(
+                controller: _horizontalRowScrollController,
+                scrollDirection: Axis.horizontal,
+                physics: const ClampingScrollPhysics(),
+                child: headerRowLayoutGrid,
+              ),
+            ),
+          ],
+        ),
+      );
+
       return Stack(
         children: [
           Offstage(
@@ -292,6 +293,8 @@ class _FixedHeadersTableWidgetState extends State<FixedHeadersTableWidget> {
         ],
       );
     }
+
+    final calculatedHeaderRowContent = _recreateHeaderRowContent(cornerBuildInfoElement, headerRowBuildInfoElements, finalColumnSizes, cellWidths, rowSizes);
 
     // Initialize values before long for loop
     List<HeaderLayoutBuilderInfo> headerLayoutGrids = [];
@@ -382,7 +385,8 @@ class _FixedHeadersTableWidgetState extends State<FixedHeadersTableWidget> {
         slivers: [
           SliverPersistentHeader(
             pinned: true,
-            delegate: _MySliverPersistentRowHeaderDelegate(minHeight: _calculatedHeaderHeight!, maxHeight: _calculatedHeaderHeight!, child: headerRowContent),
+            delegate: _MySliverPersistentRowHeaderDelegate(
+                minHeight: _calculatedHeaderHeight!, maxHeight: _calculatedHeaderHeight!, child: calculatedHeaderRowContent),
           ),
           ...sliverToBoxAdapterList
         ],
@@ -474,16 +478,13 @@ class _FixedHeadersTableWidgetState extends State<FixedHeadersTableWidget> {
               ),
             );
           } else {
-            return SizedBox(
-              width: double.infinity,
-              height: height,
-              child: Container(
+            return Container(
+                height: height,
                 alignment: widget._tableHelper.getCellAlignment(child, alignment),
                 child: CssBoxWidget.withInlineSpanChildren(
                   children: [widget.parsedCells[child] ?? const TextSpan(text: "error")],
                   style: Style(),
                 ),
-              ),
             );
           }
         }),
@@ -495,6 +496,42 @@ class _FixedHeadersTableWidgetState extends State<FixedHeadersTableWidget> {
       List<TrackSize> headerColumnSizes, List<TrackSize> headerColumnSizes2, List<TrackSize> bodyColumnSizes, List<TrackSize> bodyColumnSizes2) {
     const eq = ListEquality();
     return eq.equals(headerColumnSizes, headerColumnSizes2) && eq.equals(bodyColumnSizes, bodyColumnSizes2);
+  }
+
+  IntrinsicHeight _recreateHeaderRowContent(GridPlacementBuildInfo cornerBuildInfoElement, List<GridPlacementBuildInfo> headerRowBuildInfoElements,
+      List<TrackSize> columnSizes, List<double> cellWidths, List<IntrinsicContentTrackSize> rowSizes) {
+    final cornerLayoutGrid = LayoutGrid(
+      columnSizes: [FixedTrackSize(cellWidths[cornerBuildInfoElement.columni])],
+      rowSizes: [FixedTrackSize(_calculatedHeaderHeight ?? 0.0)],
+      children: [
+        buildGridPlacement(cornerBuildInfoElement.columni, cornerBuildInfoElement.child, cornerBuildInfoElement.columnMax, cornerBuildInfoElement.rowi,
+            cornerBuildInfoElement.rows, cornerBuildInfoElement.row,height: _calculatedHeaderHeight)
+      ],
+    );
+    final headerRowLayoutGrid = LayoutGrid(
+        gridFit: GridFit.passthrough,
+        columnSizes: columnSizes.sublist(1),
+        rowSizes: rowSizes.map((e) => FixedTrackSize(_calculatedHeaderHeight ?? 0.0)).toList(growable: false),
+        children: headerRowBuildInfoElements
+            .map((e) => buildGridPlacement(e.columni, e.child, e.columnMax, e.rowi, e.rows, e.row, height: _calculatedHeaderHeight))
+            .toList(growable: false));
+
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(width: (columnSizes[0] as FixedTrackSize).sizeInPx, child: cornerLayoutGrid),
+          Expanded(
+            child: SingleChildScrollView(
+              controller: _horizontalRowScrollController,
+              scrollDirection: Axis.horizontal,
+              physics: const ClampingScrollPhysics(),
+              child: headerRowLayoutGrid,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
