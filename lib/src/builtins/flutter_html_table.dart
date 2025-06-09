@@ -17,11 +17,14 @@ import '../tables/table_helper.dart';
 ///
 ///
 class TableHtmlExtension extends HtmlExtension {
-  final bool shrinkWrap;
+  /// It use shrinkWrap option to CssBoxWidgets. But in build method it fill available width.
+  /// Use only if something wrong with the view.
+  /// Uses shrinkWrap option in many widgets can be very expensive, because it means that you have to measure everything.
+  final bool shrinkAndFill;
   bool hasFixedHeaders = false;
   final tableHelper = TableHelper();
 
-  TableHtmlExtension({this.shrinkWrap = false});
+  TableHtmlExtension({this.shrinkAndFill = false});
 
   @override
   Set<String> get supportedTags => {
@@ -114,7 +117,7 @@ class TableHtmlExtension extends HtmlExtension {
     if (context.elementName == "table") {
       return WidgetSpan(
         child: CssBoxWidget(
-          shrinkWrap: shrinkWrap,
+          shrinkWrap: shrinkAndFill,
           style: context.styledElement!.style,
           child: LayoutBuilder(
             builder: (ctx, constraints) {
@@ -130,7 +133,7 @@ class TableHtmlExtension extends HtmlExtension {
                   parsedCells: context.builtChildrenMap!,
                   context: context,
                   width: width,
-                  shrinkWrap: shrinkWrap,
+                  shrinkWrap: shrinkAndFill,
                   tableHelper: tableHelper,
                 );
               } else {
@@ -139,7 +142,7 @@ class TableHtmlExtension extends HtmlExtension {
                   context.builtChildrenMap!,
                   context,
                   width,
-                  shrinkWrap,
+                  shrinkAndFill,
                   tableHelper,
                 );
               }
@@ -175,7 +178,7 @@ List<TableCellElement> _getCellDescendants(List<StyledElement> children) {
 }
 
 Widget _layoutCells(
-    TableElement table, Map<StyledElement, InlineSpan> parsedCells, ExtensionContext context, double width, bool shrinkWrap, TableHelper tableHelper) {
+    TableElement table, Map<StyledElement, InlineSpan> parsedCells, ExtensionContext context, double width, bool shrinkAndFill, TableHelper tableHelper) {
   final minWidths = tableHelper.getColWidths(table.tableStructure);
   double requiredWidth = 0;
   for (final minWidth in minWidths) {
@@ -183,7 +186,7 @@ Widget _layoutCells(
   }
 
   List<double> cellWidths;
-  if (!shrinkWrap && requiredWidth < width) {
+  if (shrinkAndFill || requiredWidth < width) {
     final extra = (width - requiredWidth) / minWidths.length;
     cellWidths = List.generate(minWidths.length, (index) => minWidths[index] + extra);
   } else {
@@ -243,7 +246,7 @@ Widget _layoutCells(
           rowStart: rowi,
           rowSpan: min(child.rowspan, rows.length - rowi),
           child: CssBoxWidget(
-            shrinkWrap: shrinkWrap,
+            shrinkWrap: shrinkAndFill,
             style: child.style.merge(row.style),
             child: Builder(builder: (context) {
               final alignment = child.style.direction ?? Directionality.of(context);
