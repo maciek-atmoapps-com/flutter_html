@@ -390,18 +390,9 @@ class StyledElementBuiltIn extends HtmlExtension {
       case "strong":
         continue bold;
       case "sub":
-        if (_hasOnlyDigits(children)) {
-          // We can use FontFeature.subscripts since this just looks nice
-          styledElement.style = Style(
-            fontFeatureSettings: [const FontFeature.subscripts()],
-          );
-        } else {
-          // For the rest we should just reduce the height of the text
-          // Using WidgetSpan with translation should not be used because line breaks can occur just before subscript text
-          styledElement.style = Style(
-            fontSize: FontSize(50, Unit.percent),
-          );
-        }
+        styledElement.style = Style(
+          fontSize: FontSize(50, Unit.percent),
+        );
         break;
       case "summary":
         styledElement.style = Style(
@@ -427,20 +418,6 @@ class StyledElementBuiltIn extends HtmlExtension {
     }
 
     return styledElement;
-  }
-
-  bool _hasOnlyDigits(List<StyledElement> children) {
-    if (children.isEmpty) return true;
-    for (var child in children) {
-      if (child is TextContentElement) {
-        final text = child.text;
-        if (text == null || text.isEmpty) continue;
-        for (int codeUnit in text.codeUnits) {
-          if ((codeUnit ^ 0x30) > 9) return false;
-        }
-      }
-    }
-    return true;
   }
 
   @override
