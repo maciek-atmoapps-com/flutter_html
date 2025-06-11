@@ -6,6 +6,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
 import 'package:flutter_layout_grid/flutter_layout_grid.dart';
 
+import '../tables/fixed_headers/fixed_headers_table_widget.dart';
+import '../tables/table_helper.dart';
+
 /// [TableHtmlExtension] adds support for the <table> element to the flutter_html library.
 /// <tr>, <tbody>, <tfoot>, <thead>, <th>, <td>, <col>, and <colgroup> are also
 /// supported.
@@ -14,9 +17,14 @@ import 'package:flutter_layout_grid/flutter_layout_grid.dart';
 ///
 ///
 class TableHtmlExtension extends HtmlExtension {
-  final bool shrinkWrap;
+  /// It use shrinkWrap option to CssBoxWidgets. But in build method it fill available width.
+  /// Use only if something wrong with the view.
+  /// Uses shrinkWrap option in many widgets can be very expensive, because it means that you have to measure everything.
+  final bool shrinkAndFill;
+  bool hasFixedHeaders = false;
+  final tableHelper = TableHelper();
 
-  const TableHtmlExtension({this.shrinkWrap = false});
+  TableHtmlExtension({this.shrinkAndFill = false});
 
   @override
   Set<String> get supportedTags => {
@@ -34,6 +42,8 @@ class TableHtmlExtension extends HtmlExtension {
   @override
   StyledElement prepare(ExtensionContext context, List<StyledElement> children) {
     if (context.elementName == "table") {
+      hasFixedHeaders = context.attributes.containsKey("data-fixed-header");
+
       final cellDescendants = _getCellDescendants(children);
 
       return TableElement(
@@ -107,7 +117,7 @@ class TableHtmlExtension extends HtmlExtension {
     if (context.elementName == "table") {
       return WidgetSpan(
         child: CssBoxWidget(
-          shrinkWrap: shrinkWrap,
+          shrinkWrap: shrinkAndFill,
           style: context.styledElement!.style,
           child: LayoutBuilder(
             builder: (ctx, constraints) {
@@ -117,13 +127,25 @@ class TableHtmlExtension extends HtmlExtension {
               } else {
                 width = MediaQuery.sizeOf(ctx).width - 32;
               }
-              return _layoutCells(
-                context.styledElement as TableElement,
-                context.builtChildrenMap!,
-                context,
-                width,
-                shrinkWrap,
-              );
+              if (hasFixedHeaders) {
+                return FixedHeadersTableWidget(
+                  table: context.styledElement as TableElement,
+                  parsedCells: context.builtChildrenMap!,
+                  context: context,
+                  width: width,
+                  shrinkWrap: shrinkAndFill,
+                  tableHelper: tableHelper,
+                );
+              } else {
+                return _layoutCells(
+                  context.styledElement as TableElement,
+                  context.builtChildrenMap!,
+                  context,
+                  width,
+                  shrinkAndFill,
+                  tableHelper,
+                );
+              }
             },
           ),
         ),
@@ -155,15 +177,16 @@ List<TableCellElement> _getCellDescendants(List<StyledElement> children) {
   return descendants;
 }
 
-Widget _layoutCells(TableElement table, Map<StyledElement, InlineSpan> parsedCells, ExtensionContext context, double width, bool shrinkWrap) {
-  final minWidths = _getColWidths(table.tableStructure);
+Widget _layoutCells(
+    TableElement table, Map<StyledElement, InlineSpan> parsedCells, ExtensionContext context, double width, bool shrinkAndFill, TableHelper tableHelper) {
+  final minWidths = tableHelper.getColWidths(table.tableStructure);
   double requiredWidth = 0;
   for (final minWidth in minWidths) {
     requiredWidth += minWidth;
   }
 
   List<double> cellWidths;
-  if (!shrinkWrap && requiredWidth < width) {
+  if (shrinkAndFill || requiredWidth < width) {
     final extra = (width - requiredWidth) / minWidths.length;
     cellWidths = List.generate(minWidths.length, (index) => minWidths[index] + extra);
   } else {
@@ -223,13 +246,13 @@ Widget _layoutCells(TableElement table, Map<StyledElement, InlineSpan> parsedCel
           rowStart: rowi,
           rowSpan: min(child.rowspan, rows.length - rowi),
           child: CssBoxWidget(
-            shrinkWrap: shrinkWrap,
+            shrinkWrap: shrinkAndFill,
             style: child.style.merge(row.style),
             child: Builder(builder: (context) {
               final alignment = child.style.direction ?? Directionality.of(context);
               return SizedBox.expand(
                 child: Container(
-                  alignment: _getCellAlignment(child, alignment),
+                  alignment: tableHelper.getCellAlignment(child, alignment),
                   child: CssBoxWidget.withInlineSpanChildren(
                     children: [parsedCells[child] ?? const TextSpan(text: "error")],
                     style: Style(),
@@ -269,129 +292,6 @@ Widget _layoutCells(TableElement table, Map<StyledElement, InlineSpan> parsedCel
           children: cells,
         ),
       ));
-}
-
-List<double> _getColWidths(List<StyledElement> children) {
-  final widths = <double>[];
-  for (final child in children) {
-    List<double> partialWidths = [];
-    if (child is TableRowLayoutElement) {
-      partialWidths = _getColWidthsFromRow(child);
-    } else {
-      partialWidths = _getColWidths(child.children);
-    }
-    if (partialWidths.isEmpty) continue;
-    for (int i = 0; i < partialWidths.length; ++i) {
-      double partial = partialWidths[i];
-      if (widths.length <= i) {
-        widths.add(partial);
-      } else if (widths[i] < partial) {
-        widths[i] = partial;
-      }
-    }
-  }
-  return widths;
-}
-
-List<double> _getColWidthsFromRow(TableRowLayoutElement row) {
-  List<double> widths = [];
-  for (final cell in row.children) {
-    if (cell is TableCellElement) {
-      WidthInfo info = WidthInfo();
-      for (final child in cell.children) {
-        _getCellInfo(child, info);
-      }
-      double minWidth = info.requiredWidth + 32;
-      widths.add(minWidth);
-    }
-  }
-  return widths;
-}
-
-void _getCellInfo(StyledElement element, WidthInfo info) {
-  if (element is TextContentElement) {
-    final regex = RegExp(r'\w+|\s+|[^\w\s]');
-    final wordRegex = RegExp(r'\w+');
-    final text = element.text;
-    if (text == null || text.isEmpty) return;
-    final words = regex.allMatches(text).map((m) => m.group(0)!).toList();
-    for (final word in words) {
-      double wordWidth = TextPainter.computeWidth(
-        text: TextSpan(
-            text: word,
-            style: TextStyle(
-              fontSize: element.style.fontSize?.value ?? 16,
-              fontFamily: element.style.fontFamily,
-              fontWeight: element.style.fontWeight,
-              fontStyle: element.style.fontStyle,
-            )),
-        textDirection: TextDirection.ltr,
-      );
-      if (info.join && wordRegex.hasMatch(word)) {
-        info.width += wordWidth;
-      } else {
-        info.width = wordWidth;
-      }
-      if (info.width > info.requiredWidth) {
-        info.requiredWidth = info.width;
-      }
-      info.join = wordRegex.hasMatch(word);
-    }
-  } else {
-    for (final child in element.children) {
-      _getCellInfo(child, info);
-    }
-  }
-}
-
-class WidthInfo {
-  double width = 0;
-  double requiredWidth = 0;
-  bool join = false;
-}
-
-Alignment _getCellAlignment(TableCellElement cell, TextDirection alignment) {
-  Alignment verticalAlignment;
-
-  switch (cell.style.verticalAlign) {
-    case VerticalAlign.baseline:
-    case VerticalAlign.sub:
-    case VerticalAlign.sup:
-    case VerticalAlign.top:
-      verticalAlignment = Alignment.topCenter;
-      break;
-    case VerticalAlign.middle:
-      verticalAlignment = Alignment.center;
-      break;
-    case VerticalAlign.bottom:
-      verticalAlignment = Alignment.bottomCenter;
-      break;
-  }
-
-  switch (cell.style.textAlign) {
-    case TextAlign.left:
-      return verticalAlignment + Alignment.centerLeft;
-    case TextAlign.right:
-      return verticalAlignment + Alignment.centerRight;
-    case TextAlign.center:
-      return verticalAlignment + Alignment.center;
-    case null:
-    case TextAlign.start:
-    case TextAlign.justify:
-      switch (alignment) {
-        case TextDirection.rtl:
-          return verticalAlignment + Alignment.centerRight;
-        case TextDirection.ltr:
-          return verticalAlignment + Alignment.centerLeft;
-      }
-    case TextAlign.end:
-      switch (alignment) {
-        case TextDirection.rtl:
-          return verticalAlignment + Alignment.centerLeft;
-        case TextDirection.ltr:
-          return verticalAlignment + Alignment.centerRight;
-      }
-  }
 }
 
 class TableCellElement extends StyledElement {
