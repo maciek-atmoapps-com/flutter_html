@@ -76,16 +76,23 @@ class CssBoxWidget extends StatelessWidget {
         Container(
           decoration: BoxDecoration(
             border: style.border,
-            color: style.backgroundColor, //Colors the padding and content boxes
+            borderRadius: style.borderRadius,
           ),
-          width: _shouldExpandToFillBlock() ? double.infinity : null,
-          padding: padding,
-          child: top
-              ? child
-              : MediaQuery(
-                  data: MediaQuery.of(context).copyWith(textScaleFactor: 1.0),
-                  child: child,
-                ),
+          child: Container(
+            clipBehavior: Clip.hardEdge,
+            decoration: BoxDecoration(
+              borderRadius: style.borderRadius,
+              color: style.backgroundColor, //Colors the padding and content boxes
+            ),
+            width: _shouldExpandToFillBlock() ? double.infinity : null,
+            padding: padding,
+            child: top
+                ? child
+                : MediaQuery(
+              data: MediaQuery.of(context).copyWith(textScaleFactor: 1.0),
+              child: child,
+            ),
+          ),
         ),
         if (markerBox != null) ClickableRichText(text: markerBox),
       ],

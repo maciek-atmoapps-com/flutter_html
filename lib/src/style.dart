@@ -214,6 +214,7 @@ class Style {
   String? after;
   Border? border;
   Alignment? alignment;
+  BorderRadius? borderRadius;
 
   /// MaxLine
   ///
@@ -267,6 +268,7 @@ class Style {
     this.after,
     this.border,
     this.alignment,
+    this.borderRadius,
     this.maxLines,
     this.textOverflow,
     this.textTransform = TextTransform.none,
@@ -359,6 +361,7 @@ class Style {
       before: other.before,
       after: other.after,
       border: border?.merge(other.border) ?? other.border,
+      borderRadius: other.borderRadius,
       alignment: other.alignment,
       maxLines: other.maxLines,
       textOverflow: other.textOverflow,
@@ -452,6 +455,7 @@ class Style {
     TextOverflow? textOverflow,
     TextTransform? textTransform,
     bool? beforeAfterNull,
+    BorderRadius? borderRadius,
   }) {
     return Style(
       backgroundColor: backgroundColor ?? this.backgroundColor,
@@ -489,6 +493,7 @@ class Style {
       before: beforeAfterNull == true ? null : before ?? this.before,
       after: beforeAfterNull == true ? null : after ?? this.after,
       border: border ?? this.border,
+      borderRadius: borderRadius ?? this.borderRadius,
       alignment: alignment ?? this.alignment,
       maxLines: maxLines ?? this.maxLines,
       textOverflow: textOverflow ?? this.textOverflow,

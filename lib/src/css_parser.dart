@@ -61,6 +61,29 @@ Style declarationsToStyle(Map<String, List<css.Expression>> declarations) {
           style.border = ExpressionMapping.expressionToBorder(
               borderWidths, borderStyles, borderColors);
           break;
+        case 'border-radius':
+          List<css.LiteralTerm?>? borderRadiuses =
+          value.whereType<css.LiteralTerm>().toList();
+
+          /// List<css.LiteralTerm> might include other values than the ones we want for [BorderSide.width], so make sure to remove those before passing it to [ExpressionMapping]
+          borderRadiuses.removeWhere((element) =>
+          element == null ||
+              (element is! css.LengthTerm &&
+                  element is! css.PercentageTerm &&
+                  element is! css.EmTerm &&
+                  element is! css.RemTerm &&
+                  element is! css.NumberTerm));
+
+          css.LiteralTerm? borderRadius =
+          borderRadiuses.firstWhereOrNull((element) => element != null);
+
+          BorderRadius newBorderRadius = BorderRadius.all(Radius.circular(
+              ExpressionMapping.expressionToBorderRadius(
+                  borderRadius)),
+
+          );
+          style.borderRadius = newBorderRadius;
+          break;
         case 'border-left':
           List<css.LiteralTerm?>? borderWidths =
               value.whereType<css.LiteralTerm>().toList();
@@ -873,6 +896,23 @@ class ExpressionMapping {
       return BorderStyle.solid;
     }
     return BorderStyle.none;
+  }
+
+  static double expressionToBorderRadius(css.Expression? value) {
+    if (value is css.NumberTerm) {
+      return double.tryParse(value.text) ?? 1.0;
+    } else if (value is css.PercentageTerm) {
+      return (double.tryParse(value.text) ?? 400) / 100;
+    } else if (value is css.EmTerm) {
+      return double.tryParse(value.text) ?? 1.0;
+    } else if (value is css.RemTerm) {
+      return double.tryParse(value.text) ?? 1.0;
+    } else if (value is css.LengthTerm) {
+      return double.tryParse(
+          value.text.replaceAll(RegExp(r'\s+(\d+\.\d+)\s+'), '')) ??
+          1.0;
+    }
+    return 4.0;
   }
 
   static Color? expressionToColor(css.Expression? value) {
