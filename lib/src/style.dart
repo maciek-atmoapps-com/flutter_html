@@ -301,7 +301,6 @@ class Style {
 
   TextStyle generateTextStyle() {
     return TextStyle(
-      backgroundColor: backgroundColor,
       color: color,
       decoration: textDecoration,
       decorationColor: textDecorationColor,
@@ -381,9 +380,6 @@ class Style {
         : lineHeight;
 
     return child.copyWith(
-      backgroundColor: child.backgroundColor != Colors.transparent
-          ? child.backgroundColor
-          : backgroundColor,
       color: child.color ?? color,
       direction: child.direction ?? direction,
       display: display == Display.none ? display : child.display,
