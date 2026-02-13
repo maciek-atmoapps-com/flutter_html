@@ -86,7 +86,7 @@ class HtmlParser extends StatefulWidget {
       (String? url, Map<String, String> attributes, html.Element? element) {
         if (url?.startsWith("#") == true) {
           final anchorContext =
-              AnchorKey.forId(key, url!.substring(1))?.currentContext;
+              AnchorKey.findContext(key, url!.substring(1));
           if (anchorContext != null) {
             Scrollable.ensureVisible(anchorContext);
           }
@@ -176,6 +176,11 @@ class _HtmlParserState extends State<HtmlParser> {
   /// which are then parsed into an [InlineSpan] tree that is then rendered to the screen by Flutter
   @override
   Widget build(BuildContext context) {
+    // Clear anchor key registry before rebuilding so keys can be re-registered
+    if (widget.key != null) {
+      AnchorKey.resetRegistryForParent(widget.key!);
+    }
+
     //Rendering Step
     return CssBoxWidget.withInlineSpanChildren(
       style: tree.style,
@@ -188,6 +193,9 @@ class _HtmlParserState extends State<HtmlParser> {
 
   @override
   void dispose() {
+    if (widget.key != null) {
+      AnchorKey.resetRegistryForParent(widget.key!);
+    }
     for (var e in widget.extensions) {
       e.onDispose();
     }

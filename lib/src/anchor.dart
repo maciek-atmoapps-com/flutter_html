@@ -9,6 +9,12 @@ class AnchorKey extends GlobalKey {
 
   const AnchorKey._(this.parentKey, this.id) : super.constructor();
 
+  /// Clears all registered anchor keys for a given [parentKey].
+  /// Must be called before each build to allow keys to be re-registered.
+  static void resetRegistryForParent(Key parentKey) {
+    _registry.removeWhere((key) => key.parentKey == parentKey);
+  }
+
   static AnchorKey? of(Key? parentKey, StyledElement? id) {
     final key = forId(parentKey, id?.elementId);
     if (key == null || _registry.contains(key)) {
@@ -17,6 +23,18 @@ class AnchorKey extends GlobalKey {
     }
     _registry.add(key);
     return key;
+  }
+
+  /// Finds the registered AnchorKey for the given [parentKey] and [id]
+  /// and returns its current BuildContext (if the widget is still mounted).
+  static BuildContext? findContext(Key? parentKey, String? id) {
+    if (parentKey == null || id == null || id.isEmpty || id == "[[No ID]]") {
+      return null;
+    }
+    // Look up the EXACT registered instance that was assigned to a widget,
+    // so that GlobalKey.currentContext can find it in the framework's registry.
+    final registeredKey = _registry.lookup(AnchorKey._(parentKey, id));
+    return registeredKey?.currentContext;
   }
 
   static AnchorKey? forId(Key? parentKey, String? id) {

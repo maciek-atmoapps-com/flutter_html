@@ -452,6 +452,32 @@ class StyledElementBuiltIn extends HtmlExtension {
       );
     }
 
+    final anchorKey = AnchorKey.of(context.parser.key, context.styledElement);
+    if (anchorKey != null) {
+      return WidgetSpan(
+        alignment: PlaceholderAlignment.baseline,
+        baseline: TextBaseline.alphabetic,
+        child: CssBoxWidget.withInlineSpanChildren(
+          key: anchorKey,
+          style: context.styledElement!.style,
+          shrinkWrap: context.parser.shrinkWrap,
+          children: context.builtChildrenMap!.entries
+              .expandIndexed((index, child) => [
+                    child.value,
+                    if (context.parser.shrinkWrap &&
+                        child.key.style.display == Display.block &&
+                        index != context.styledElement!.children.length - 1 &&
+                        child.key.element?.parent?.localName != "th" &&
+                        child.key.element?.parent?.localName != "td" &&
+                        child.key.element?.localName != "html" &&
+                        child.key.element?.localName != "body")
+                      const TextSpan(text: "\n", style: TextStyle(fontSize: 0)),
+                  ])
+              .toList(),
+        ),
+      );
+    }
+
     return TextSpan(
       style: context.styledElement!.style.generateTextStyle(),
       children: context.builtChildrenMap!.entries
